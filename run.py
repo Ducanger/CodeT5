@@ -29,11 +29,11 @@ import numpy as np
 import sys
 import multiprocessing
 import time
-if sys.stderr.isatty():
-    from tqdm import tqdm
-else:
-    def tqdm(iterable, **kwargs):
-        return iterable
+# if sys.stderr.isatty():
+from tqdm import tqdm
+# else:
+#     def tqdm(iterable, **kwargs):
+#         return iterable
 import torch
 from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import DataLoader, SequentialSampler, RandomSampler
@@ -378,10 +378,10 @@ def main(args):
                     scheduler.step()
                     global_step += 1
                     train_loss = round(tr_loss * args.gradient_accumulation_steps / (nb_tr_steps + 1), 4)
-                    if sys.stderr.isatty():
-                        bar.set_description("[{}] Train loss {}".format(cur_epoch, round(train_loss, 3)))
-                if (step+1)% args.eval_frequency ==0 and (not sys.stderr.isatty()):
-                    logger.info("epoch {} loss {}".format(cur_epoch,train_loss))
+                    # if sys.stderr.isatty():
+                    bar.set_description("[{}] Train loss {}".format(cur_epoch, round(train_loss, 3)))
+                # if (step+1)% args.eval_frequency ==0 and (not sys.stderr.isatty()):
+                #     logger.info("epoch {} loss {}".format(cur_epoch,train_loss))
             if args.do_eval:
                 eval_examples, eval_data = load_and_cache_commit_data(args, args.dev_filename, pool, tokenizer, 'dev',
                                                                     only_src=True,  is_sample=args.debug)
@@ -732,10 +732,10 @@ def ECMG(args):
                     scheduler.step()
                     global_step += 1
                     train_loss = round(tr_loss * args.gradient_accumulation_steps / (nb_tr_steps + 1), 4)
-                    if sys.stderr.isatty():
-                        bar.set_description("[{}] Train loss {}".format(cur_epoch, round(train_loss, 3)))
-                if (step+1)% args.eval_frequency ==0 and (not sys.stderr.isatty()):
-                    logger.info("epoch {} loss {}".format(cur_epoch,train_loss))
+                    # if sys.stderr.isatty():
+                    bar.set_description("[{}] Train loss {}".format(cur_epoch, round(train_loss, 3)))
+                # if (step+1)% args.eval_frequency ==0 and (not sys.stderr.isatty()):
+                #     logger.info("epoch {} loss {}".format(cur_epoch,train_loss))
             if args.do_eval:
                 # eval_examples, eval_data = load_and_cache_commit_data(args, args.dev_filename, pool, tokenizer, 'dev',
                 #                                                     only_src=True,  is_sample=args.debug)

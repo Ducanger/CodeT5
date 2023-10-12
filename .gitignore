@@ -13,8 +13,12 @@ saved_model/*
 
 env
 fixingv1.csv
-# *.jsonl
-# *.json 
+*.jsonl
+*.json 
 *.zip
 *.csv
 *.diff
+
+# cmg-data/
+# CMG-data/
+appendix/

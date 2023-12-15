@@ -65,9 +65,9 @@ from util import REPLACE, REPLACE_OLD, REPLACE_NEW,REPLACE_END,INSERT,INSERT_OLD
 
 
 def eval_bleu_epoch(args, eval_data, eval_examples, model, tokenizer, split_tag,beam_size=1):
-    logger.info("  ***** Running bleu evaluation on {} data*****".format(split_tag))
-    logger.info("  Num examples = %d", len(eval_examples))
-    logger.info("  Batch size = %d", args.eval_batch_size)
+    print("  ***** Running bleu evaluation on {} data*****".format(split_tag))
+    print("  Num examples = %d", len(eval_examples))
+    print("  Batch size = %d", args.eval_batch_size)
     eval_sampler = SequentialSampler(eval_data)
     if args.data_num == -1:
         eval_dataloader = DataLoader(eval_data, sampler=eval_sampler, batch_size=args.eval_batch_size,
@@ -246,11 +246,11 @@ def build_or_load_gen_model(args):
     model = model_class.from_pretrained(args.model_name_or_path)
 
     special_tokens_dict = {'additional_special_tokens': [REPLACE, REPLACE_OLD, REPLACE_NEW,REPLACE_END,INSERT,INSERT_OLD,INSERT_NEW ,INSERT_END,DELETE,DELETE_END,KEEP,KEEP_END]}
-    logger.info("adding new token %s"%str(special_tokens_dict))
+    print("adding new token %s"%str(special_tokens_dict))
     num_added_toks = tokenizer.add_special_tokens(special_tokens_dict)
     model.resize_token_embeddings(len(tokenizer))
     if args.load_finetuned_model_path is not None:
-        logger.info("Reload fine tuned model from {}".format(args.load_finetuned_model_path))
+        print("Reload fine tuned model from {}".format(args.load_finetuned_model_path))
         model.load_state_dict(torch.load(args.load_finetuned_model_path))
     if args.base_model_type == "codet5":
         pass
@@ -260,7 +260,7 @@ def build_or_load_gen_model(args):
         raise RuntimeError
     
     if args.load_model_path is not None:
-        logger.info("Reload model from {}".format(args.load_model_path))
+        print("Reload model from {}".format(args.load_model_path))
         model.load_state_dict(torch.load(args.load_model_path))
 
     return config, model, tokenizer
@@ -335,11 +335,11 @@ def main(args):
 
         # Start training
         train_example_num = len(train_data)
-        logger.info("***** Running training *****")
-        logger.info("  Num examples = %d", train_example_num)
-        logger.info("  Batch size = %d", args.train_batch_size)
-        logger.info("  Batch num = %d", math.ceil(train_example_num / args.train_batch_size))
-        logger.info("  Num epoch = %d", args.num_train_epochs)
+        print("***** Running training *****")
+        print("  Num examples = %d", train_example_num)
+        print("  Batch size = %d", args.train_batch_size)
+        print("  Batch num = %d", math.ceil(train_example_num / args.train_batch_size))
+        print("  Num epoch = %d", args.num_train_epochs)
 
         dev_dataset = {}
         global_step, best_bleu, best_ppl = 0, -1, 1e6
@@ -381,7 +381,7 @@ def main(args):
                     if sys.stderr.isatty():
                         bar.set_description("[{}] Train loss {}".format(cur_epoch, round(train_loss, 3)))
                 if (step+1)% args.eval_frequency ==0 and (not sys.stderr.isatty()):
-                    logger.info("epoch {} loss {}".format(cur_epoch,train_loss))
+                    print("epoch {} loss {}".format(cur_epoch,train_loss))
             if args.do_eval:
                 eval_examples, eval_data = load_and_cache_commit_data(args, args.dev_filename, pool, tokenizer, 'dev',
                                                                     only_src=True,  is_sample=args.debug)
@@ -390,7 +390,7 @@ def main(args):
                 output_fn = os.path.join(args.output_dir, "dev.output")
                 gold_fn = os.path.join(args.output_dir, "dev.gold")
                 dev_accs, predictions = [], []
-                with open(output_fn, 'w') as f, open(gold_fn, 'w') as f1:
+                with open(output_fn, 'w', encoding="utf-8") as f, open(gold_fn, 'w', encoding="utf-8") as f1:
                     for pred_nl, gold in zip(pred_nls, eval_examples):
                         # print(gold.idx,gold.target)
                         dev_accs.append(pred_nl.strip() == gold.target.strip())
@@ -406,8 +406,8 @@ def main(args):
                     
                 (goldMap, predictionMap) = smooth_bleu.computeMaps(predictions, gold_fn)
                 dev_bleu = round(smooth_bleu.bleuFromMaps(goldMap, predictionMap)[0], 2)
-                logger.info("  %s = %s "%("codenn_bleu",str(dev_bleu)))
-                logger.info("  "+"*"*20) 
+                print("  %s = %s "%("codenn_bleu",str(dev_bleu)))
+                print("  "+"*"*20) 
 
                 #save last checkpoint
                 last_output_dir = os.path.join(args.output_dir, 'checkpoint-last')
@@ -418,8 +418,8 @@ def main(args):
                 torch.save(model_to_save.state_dict(), output_model_file)  
 
                 if dev_bleu>best_bleu:
-                    logger.info("  Best bleu:%s",dev_bleu)
-                    logger.info("  "+"*"*20)
+                    print("  Best bleu:%s",dev_bleu)
+                    print("  "+"*"*20)
                     best_bleu=dev_bleu
                     # Save best checkpoint for best bleu
                     output_dir = os.path.join(args.output_dir, 'checkpoint-best-bleu')
@@ -429,18 +429,18 @@ def main(args):
                     output_model_file = os.path.join(output_dir, "pytorch_model.bin")
                     torch.save(model_to_save.state_dict(), output_model_file)
 
-            # logger.info("***** CUDA.empty_cache() *****")
+            # print("***** CUDA.empty_cache() *****")
             torch.cuda.empty_cache()
         if args.local_rank in [-1, 0] and args.data_num == -1:
             tb_writer.close()
-        logger.info("Finish training and take %s", get_elapse_time(t0))
+        print("Finish training and take %s", get_elapse_time(t0))
 
     if args.do_test:
-        logger.info("  " + "***** Testing *****")
-        logger.info("  Batch size = %d", args.eval_batch_size)
+        print("  " + "***** Testing *****")
+        print("  Batch size = %d", args.eval_batch_size)
         model = model.module if hasattr(model, 'module') else model
         if args.load_model_path is not None:
-            logger.info("reload model from {}".format(args.load_model_path))
+            print("reload model from {}".format(args.load_model_path))
             model.load_state_dict(torch.load(args.load_model_path))
         eval_examples, eval_data = load_and_cache_commit_data(args, args.test_filename, pool, tokenizer, 'test',
                                                             only_src=True, is_sample=args.debug)
@@ -449,7 +449,7 @@ def main(args):
         output_fn = os.path.join(args.output_dir, "test.output")
         gold_fn = os.path.join(args.output_dir, "test.gold")
         dev_accs, predictions = [], []
-        with open(output_fn, 'w') as f, open(gold_fn, 'w') as f1:
+        with open(output_fn, 'w', encoding="utf-8") as f, open(gold_fn, 'w', encoding="utf-8") as f1:
             for pred_nl, gold in zip(pred_nls, eval_examples):
                 dev_accs.append(pred_nl.strip() == gold.target.strip())
                 predictions.append(str(gold.idx) + '\t' + pred_nl)
@@ -463,11 +463,11 @@ def main(args):
             
         (goldMap, predictionMap) = smooth_bleu.computeMaps(predictions, gold_fn)
         dev_bleu = round(smooth_bleu.bleuFromMaps(goldMap, predictionMap)[0], 2)
-        logger.info("  %s = %s "%("codenn_bleu",str(dev_bleu)))
+        print("  %s = %s "%("codenn_bleu",str(dev_bleu)))
 
     if args.do_retrieval:
-        logger.info("  " + "***** retrievaling *****")
-        logger.info("  Batch size = %d", args.eval_batch_size)
+        print("  " + "***** retrievaling *****")
+        print("  Batch size = %d", args.eval_batch_size)
         model = model.module if hasattr(model, 'module') else model
         train_examples, train_data = load_and_cache_commit_data(args, args.train_filename, pool, tokenizer, 'train', is_sample=args.debug)
         train_sampler = SequentialSampler(train_data) 
@@ -485,7 +485,7 @@ def main(args):
 
         train_code_vecs=[]
         eval_code_vecs=[]
-        logger.info("  Num examples of Corpus = %d", len(train_data))
+        print("  Num examples of Corpus = %d", len(train_data))
         for batch in train_dataloader:
             with torch.no_grad():
                 source_ids = batch[0].to(args.device)
@@ -498,7 +498,7 @@ def main(args):
                     
                 train_code_vecs.append( train_code_vec.cpu().numpy()) 
 
-        logger.info("  Num examples to retrieve = %d", len(eval_data))
+        print("  Num examples to retrieve = %d", len(eval_data))
         for batch in eval_dataloader:
             with torch.no_grad():
                 # batch = tuple(t.to(args.device) for t in batch)
@@ -517,11 +517,11 @@ def main(args):
         scores=np.matmul(eval_code_vecs, train_code_vecs.T)
         sort_ids=np.argsort(scores, axis=-1, kind='quicksort', order=None)[:,::-1]   # [num_of_eval_samples,num_of_train_samples]
         if "train" in args.retrieval_result_filename:
-            logger.info("return 2nd ranked result")
+            print("return 2nd ranked result")
             rank1_result = sort_ids[:,1] # [num_of_eval_samples]
         else:
             rank1_result = sort_ids[:,0] # [num_of_eval_samples]
-        logger.info("ranked list %s"%str(rank1_result[:30]))
+        print("ranked list %s"%str(rank1_result[:30]))
         retrieval_results = []
         pred_nls = []
         for idx in rank1_result:
@@ -541,19 +541,19 @@ def main(args):
             
         (goldMap, predictionMap) = smooth_bleu.computeMaps(predictions, gold_fn)
         dev_bleu = round(smooth_bleu.bleuFromMaps(goldMap, predictionMap)[0], 2)
-        logger.info("  %s = %s "%("codenn_bleu",str(dev_bleu)))
-        logger.info(" save predict result in %s"%(output_fn ))
+        print("  %s = %s "%("codenn_bleu",str(dev_bleu)))
+        print(" save predict result in %s"%(output_fn ))
 
         save_json_data(args.retrieval_result_dir, args.retrieval_result_filename, retrieval_results)
         
-    logger.info("Finish and take {}".format(get_elapse_time(t0)))
+    print("Finish and take {}".format(get_elapse_time(t0)))
     fa.write("Finish and take {}".format(get_elapse_time(t0)))
     fa.close()
 
 def eval_ecmg_bleu_epoch(args, eval_data, eval_examples, model, tokenizer, split_tag,beam_size=1):
-    logger.info("  ***** Running bleu evaluation on {} data*****".format(split_tag))
-    logger.info("  Num examples = %d", len(eval_examples))
-    logger.info("  Batch size = %d", args.eval_batch_size)
+    print("  ***** Running bleu evaluation on {} data*****".format(split_tag))
+    print("  Num examples = %d", len(eval_examples))
+    print("  Batch size = %d", args.eval_batch_size)
     eval_sampler = SequentialSampler(eval_data)
     if args.data_num == -1:
         eval_dataloader = DataLoader(eval_data, sampler=eval_sampler, batch_size=args.eval_batch_size,
@@ -622,11 +622,11 @@ def ECMG(args):
     model = model_class.from_pretrained(args.model_name_or_path)
 
     special_tokens_dict = {'additional_special_tokens': [REPLACE, REPLACE_OLD, REPLACE_NEW,REPLACE_END,INSERT,INSERT_OLD,INSERT_NEW ,INSERT_END,DELETE,DELETE_END,KEEP,KEEP_END]}
-    logger.info("adding new token %s"%str(special_tokens_dict))
+    print("adding new token %s"%str(special_tokens_dict))
     num_added_toks = tokenizer.add_special_tokens(special_tokens_dict)
     model.resize_token_embeddings(len(tokenizer))
     if args.load_finetuned_model_path is not None:
-        logger.info("Reload fine tuned model from {}".format(args.load_finetuned_model_path))
+        print("Reload fine tuned model from {}".format(args.load_finetuned_model_path))
         model.load_state_dict(torch.load(args.load_finetuned_model_path))
 
     decoder_layer = nn.TransformerDecoderLayer(d_model=config.hidden_size, nhead=config.num_attention_heads)
@@ -635,7 +635,7 @@ def ECMG(args):
     model = ECMGModel(model, config, args,sos_id=tokenizer.cls_token_id,eos_id=tokenizer.sep_token_id)
 
     if args.load_model_path is not None:
-        logger.info("Reload model from {}".format(args.load_model_path))
+        print("Reload model from {}".format(args.load_model_path))
         model.load_state_dict(torch.load(args.load_model_path))
 
 
@@ -675,11 +675,11 @@ def ECMG(args):
 
         # Start training
         train_example_num = len(train_data)
-        logger.info("***** Running training *****")
-        logger.info("  Num examples = %d", train_example_num)
-        logger.info("  Batch size = %d", args.train_batch_size)
-        logger.info("  Batch num = %d", math.ceil(train_example_num / args.train_batch_size))
-        logger.info("  Num epoch = %d", args.num_train_epochs)
+        print("***** Running training *****")
+        print("  Num examples = %d", train_example_num)
+        print("  Batch size = %d", args.train_batch_size)
+        print("  Batch num = %d", math.ceil(train_example_num / args.train_batch_size))
+        print("  Num epoch = %d", args.num_train_epochs)
 
         dev_dataset = {}
         global_step, best_bleu, best_ppl = 0, -1, 1e6
@@ -735,7 +735,7 @@ def ECMG(args):
                     if sys.stderr.isatty():
                         bar.set_description("[{}] Train loss {}".format(cur_epoch, round(train_loss, 3)))
                 if (step+1)% args.eval_frequency ==0 and (not sys.stderr.isatty()):
-                    logger.info("epoch {} loss {}".format(cur_epoch,train_loss))
+                    print("epoch {} loss {}".format(cur_epoch,train_loss))
             if args.do_eval:
                 # eval_examples, eval_data = load_and_cache_commit_data(args, args.dev_filename, pool, tokenizer, 'dev',
                 #                                                     only_src=True,  is_sample=args.debug)
@@ -755,9 +755,9 @@ def ECMG(args):
                     
                 (goldMap, predictionMap) = smooth_bleu.computeMaps(predictions, gold_fn)
                 dev_bleu = round(smooth_bleu.bleuFromMaps(goldMap, predictionMap)[0], 2)
-                logger.info("  %s = %s "%("codenn_bleu",str(dev_bleu)))
-                logger.info("  "+"*"*20) 
-                logger.info(" save predict result in %s"%(output_fn ))
+                print("  %s = %s "%("codenn_bleu",str(dev_bleu)))
+                print("  "+"*"*20) 
+                print(" save predict result in %s"%(output_fn ))
                 #save last checkpoint
                 last_output_dir = os.path.join(args.output_dir, 'checkpoint-last')
                 if not os.path.exists(last_output_dir):
@@ -767,8 +767,8 @@ def ECMG(args):
                 torch.save(model_to_save.state_dict(), output_model_file)  
 
                 if dev_bleu>best_bleu:
-                    logger.info("  Best bleu:%s",dev_bleu)
-                    logger.info("  "+"*"*20)
+                    print("  Best bleu:%s",dev_bleu)
+                    print("  "+"*"*20)
                     best_bleu=dev_bleu
                     # Save best checkpoint for best bleu
                     output_dir = os.path.join(args.output_dir, 'checkpoint-best-bleu')
@@ -778,18 +778,18 @@ def ECMG(args):
                     output_model_file = os.path.join(output_dir, "pytorch_model.bin")
                     torch.save(model_to_save.state_dict(), output_model_file)
 
-            # logger.info("***** CUDA.empty_cache() *****")
+            # print("***** CUDA.empty_cache() *****")
             torch.cuda.empty_cache()
         if args.local_rank in [-1, 0] and args.data_num == -1:
             tb_writer.close()
-        logger.info("Finish training and take %s", get_elapse_time(t0))
+        print("Finish training and take %s", get_elapse_time(t0))
 
     if args.do_test:
-        logger.info("  " + "***** Testing *****")
-        logger.info("  Batch size = %d", args.eval_batch_size)
+        print("  " + "***** Testing *****")
+        print("  Batch size = %d", args.eval_batch_size)
         model = model.module if hasattr(model, 'module') else model
         if args.load_model_path is not None:
-            logger.info("reload model from {}".format(args.load_model_path))
+            print("reload model from {}".format(args.load_model_path))
             model.load_state_dict(torch.load(args.load_model_path))
         # eval_examples, eval_data = load_and_cache_commit_data(args, args.test_filename, pool, tokenizer, 'test',
         #                                                     only_src=True, is_sample=args.debug)
@@ -808,16 +808,16 @@ def ECMG(args):
             
         (goldMap, predictionMap) = smooth_bleu.computeMaps(predictions, gold_fn)
         dev_bleu = round(smooth_bleu.bleuFromMaps(goldMap, predictionMap)[0], 2)
-        logger.info("  %s = %s "%("codenn_bleu",str(dev_bleu)))
-        logger.info(" save predict result in %s"%(output_fn ))
+        print("  %s = %s "%("codenn_bleu",str(dev_bleu)))
+        print(" save predict result in %s"%(output_fn ))
 
-    logger.info("Finish and take {}".format(get_elapse_time(t0)))
+    print("Finish and take {}".format(get_elapse_time(t0)))
     fa.write("Finish and take {}".format(get_elapse_time(t0)))
     fa.close()
 
 if __name__ == "__main__":
     args = parse_args()
-    logger.info(args)
+    print(args)
     if args.run_codet5:
         main(args)
     else:
